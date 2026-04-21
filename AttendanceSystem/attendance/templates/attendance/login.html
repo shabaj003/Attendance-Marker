@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Login - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header text-center">
+                    <h3><i class="fas fa-sign-in-alt"></i> Login</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate autocomplete="off">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email Address</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.email.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_password" class="form-label">Password</label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.password.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            {{ form.remember_me }}
+                            <label class="form-check-label" for="id_remember_me">
+                                Remember me
+                            </label>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-primary w-100 mb-3">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <p class="text-center mb-2">
+                        New to the system?
+                    </p>
+                    <div class="row gap-2">
+                        <div class="col">
+                            <a href="{% url 'student_register' %}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-user-graduate"></i> Student Register
+                            </a>
+                        </div>
+                        <div class="col">
+                            <a href="{% url 'teacher_register' %}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-chalkboard-user"></i> Teacher Register
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

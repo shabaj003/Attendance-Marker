@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Dashboard - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="fas fa-tachometer-alt"></i> Teacher Dashboard</h2>
+        </div>
+    </div>
+
+    {% if not teacher.is_verified %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-hourglass-end"></i> <strong>Pending Verification:</strong> Your account is awaiting admin verification.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    <!-- Statistics -->
+    <div class="statistics">
+        <div class="stat-card">
+            <h5>Total Classes</h5>
+            <div class="value">{{ total_sessions }}</div>
+        </div>
+        <div class="stat-card">
+            <h5>Active Classes</h5>
+            <div class="value" style="color: #ffc107;">{{ active_sessions }}</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Quick Actions -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-tasks"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'create_class' %}" class="btn btn-primary" {% if not teacher.is_verified %}disabled{% endif %}>
+                            <i class="fas fa-plus-square"></i> Create Class
+                        </a>
+                        <a href="{% url 'teacher_attendance_report' %}" class="btn btn-secondary">
+                            <i class="fas fa-chart-line"></i> Attendance Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-user"></i> My Profile</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> Prof. {{ user.get_full_name }}</p>
+                    <p><strong>Employee ID:</strong> {{ teacher.employee_id }}</p>
+                    <p><strong>Department:</strong> {{ teacher.department }}</p>
+                    <p><strong>Subject:</strong> {{ teacher.subject }}</p>
+                    <p><strong>Status:</strong> 
+                        {% if teacher.is_verified %}
+                            <span class="badge bg-success">Verified</span>
+                        {% else %}
+                            <span class="badge bg-warning">Pending</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verification Status -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-shield-alt"></i> Account Status</h5>
+                </div>
+                <div class="card-body">
+                    {% if teacher.is_verified %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> Account Verified
+                        </div>
+                        <p class="small">You can now create classes and manage attendance.</p>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-hourglass"></i> Pending Verification
+                        </div>
+                        <p class="small">Please wait for administrator verification before creating classes.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Classes -->
+    {% if today_sessions %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-calendar-day"></i> Today's Classes</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Class</th>
+                                        <th>Start Time</th>
+                                        <th>End Time</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for session in today_sessions %}
+                                        <tr>
+                                            <td>{{ session.subject }}</td>
+                                            <td>{{ session.class_name }}</td>
+                                            <td>{{ session.start_time|time:"H:i" }}</td>
+                                            <td>{{ session.end_time|time:"H:i" }}</td>
+                                            <td>
+                                                {% if session.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'class_detail' session.id %}" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Recent Attendance Records -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> Recent Attendance Marks</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_attendance %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Roll No</th>
+                                        <th>Subject</th>
+                                        <th>Status</th>
+                                        <th>Face Verified</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in recent_attendance %}
+                                        <tr>
+                                            <td>{{ record.student.user.get_full_name }}</td>
+                                            <td>{{ record.student.roll_number }}</td>
+                                            <td>{{ record.class_session.subject }}</td>
+                                            <td>
+                                                {% if record.is_present %}
+                                                    <span class="badge bg-success">Present</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Absent</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if record.face_verified %}
+                                                    <i class="fas fa-check-circle" style="color: green;"></i>
+                                                {% else %}
+                                                    <i class="fas fa-times-circle" style="color: gray;"></i>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ record.marked_at|date:"d M, Y H:i" }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent attendance records</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

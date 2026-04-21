@@ -1,0 +1,112 @@
+Teacher Quick Reference Guide
+================================
+
+## Login
+- Visit: http://localhost:8000/login/
+- Email: Your registered email
+- Password: Your password
+
+## After Registration
+⏳ Your account will be pending verification by administrator
+✅ Admin will verify your account before you can create classes
+
+## Create a Class
+
+1. Go to "Teacher Dashboard"
+2. Click "Create Class Session"
+3. Fill in:
+   - Subject Name: E.g., "Mathematics", "Physics"
+   - Class Section: E.g., "10-A", "12-B"
+   - Start Time: When class starts
+   - End Time: When class ends
+   - Duration: In minutes (auto-calculated)
+   - Description: Optional topics
+
+4. Click "Create Class Session"
+5. A unique 6-character key will be generated automatically
+
+## Share Class Key with Students
+
+After creating a class:
+1. Go to "Class Details"
+2. Copy the unique class key (6 characters)
+3. Share it with students (verbally, email, WhatsApp, etc.)
+4. Students need this key to mark attendance
+
+## Start the Class
+
+Before students start marking attendance:
+1. Go to your class
+2. Click "Start Class"
+3. Now students can use the key to mark attendance
+
+## Monitor Attendance
+
+During the class:
+1. Go to "Class Details"
+2. View attendance in real-time
+3. See students as they mark attendance
+
+## End the Class
+
+When class is finished:
+1. Go to "Class Details"
+2. Click "End Class"
+3. No more attendance can be marked
+
+## View Reports
+
+After classes:
+1. Click "Attendance Report"
+2. Filter by:
+   - Date range
+   - Class name
+   - Subject
+3. View present/absent counts
+
+## Important Notes
+
+- Class key is only valid during the class period
+- One key per class session
+- You can view attendance in real-time
+- Students need to provide class key AND face verification
+- Keep key confidential (share only with your class)
+- You'll receive logs of all actions for audit trail
+
+## Troubleshooting
+
+**Students can't mark attendance:**
+- Verify class is "Active" (check dashboard)
+- Ensure you've started the class
+- Check if class duration has ended
+- Confirm students have correct key
+
+**Lost the class key:**
+- Go to class details
+- Key is displayed there
+- Can regenerate new key if needed
+
+**Student marked attendance twice:**
+- System prevents duplicate entries
+- Contact admin if needs to be reset
+
+## Admin Features (Available to You)
+
+✓ Generate unique class keys
+✓ Create multiple classes
+✓ Track attendance per student
+✓ View attendance reports
+✓ Edit class details before start
+✓ Audit logs of all actions
+
+## Contact Admin
+
+If you face issues:
+- Contact school administrator
+- Provide your employee ID
+- Mention the issue clearly
+- Provide screenshots if needed
+
+---
+
+For detailed information, see README.md

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Attendance Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <section style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 100px 0;">
+        <div class="container text-center">
+            <h1 style="font-size: 3rem; margin-bottom: 20px;">
+                <i class="fas fa-clipboard-check"></i> Attendance Management System
+            </h1>
+            <p style="font-size: 1.3rem; margin-bottom: 30px;">
+                Secure. Fast. Reliable. Face Recognition-Based Attendance Tracking
+            </p>
+            
+            {% if not user.is_authenticated %}
+                <div class="row justify-content-center gap-3">
+                    <div class="col-auto">
+                        <a href="{% url 'student_register' %}" class="btn btn-light btn-lg">
+                            <i class="fas fa-user-graduate"></i> Register as Student
+                        </a>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{% url 'teacher_register' %}" class="btn btn-light btn-lg">
+                            <i class="fas fa-chalkboard-user"></i> Register as Teacher
+                        </a>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section style="padding: 80px 0;">
+        <div class="container">
+            <h2 class="text-center mb-5">Features</h2>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="fas fa-face-smile" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
+                            <h5 class="card-title">Face Recognition</h5>
+                            <p class="card-text">Advanced face recognition technology for secure attendance marking</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="fas fa-key" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
+                            <h5 class="card-title">Unique Class Keys</h5>
+                            <p class="card-text">Teachers generate unique keys for each class session</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="fas fa-chart-bar" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
+                            <h5 class="card-title">Real-time Reports</h5>
+                            <p class="card-text">Generate attendance reports and track performance</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="fas fa-lock" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
+                            <h5 class="card-title">Secure & Verified</h5>
+                            <p class="card-text">Multiple layers of security to prevent dummy attendance</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="fas fa-mobile-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
+                            <h5 class="card-title">Mobile Ready</h5>
+                            <p class="card-text">Responsive design works seamlessly on all devices</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card text-center h-100">
+                        <div class="card-body">
+                            <i class="fas fa-database" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
+                            <h5 class="card-title">Data Management</h5>
+                            <p class="card-text">Centralized database with comprehensive analytics</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section style="background: #f9f9f9; padding: 80px 0;">
+        <div class="container">
+            <h2 class="text-center mb-5">How It Works</h2>
+            <div class="row">
+                <div class="col-md-4 text-center mb-4">
+                    <div style="background: white; padding: 30px; border-radius: 10px; border-left: 4px solid #667eea;">
+                        <h3 style="color: #667eea; margin-bottom: 10px;">1. Register</h3>
+                        <p>Students and teachers register their accounts with face recognition</p>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center mb-4">
+                    <div style="background: white; padding: 30px; border-radius: 10px; border-left: 4px solid #667eea;">
+                        <h3 style="color: #667eea; margin-bottom: 10px;">2. Generate Key</h3>
+                        <p>Teachers generate unique keys for their class sessions</p>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center mb-4">
+                    <div style="background: white; padding: 30px; border-radius: 10px; border-left: 4px solid #667eea;">
+                        <h3 style="color: #667eea; margin-bottom: 10px;">3. Mark Attendance</h3>
+                        <p>Students mark attendance with key and face verification</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

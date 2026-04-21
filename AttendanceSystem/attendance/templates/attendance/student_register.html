@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Registration - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header text-center">
+                    <h3><i class="fas fa-user-graduate"></i> Student Registration</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate autocomplete="off">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_first_name" class="form-label">First Name *</label>
+                                {{ form.first_name }}
+                                {% if form.first_name.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.first_name.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_last_name" class="form-label">Last Name *</label>
+                                {{ form.last_name }}
+                                {% if form.last_name.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.last_name.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email Address *</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="invalid-feedback d-block">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_roll_number" class="form-label">Roll Number *</label>
+                            {{ form.roll_number }}
+                            <small class="form-text text-muted">e.g., 001A, 042B</small>
+                            {% if form.roll_number.errors %}
+                                <div class="invalid-feedback d-block">{{ form.roll_number.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_class_name" class="form-label">Class Name *</label>
+                            {{ form.class_name }}
+                            <small class="form-text text-muted">e.g., 10-A, 12-B</small>
+                            {% if form.class_name.errors %}
+                                <div class="invalid-feedback d-block">{{ form.class_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_phone" class="form-label">Phone Number</label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                                <div class="invalid-feedback d-block">{{ form.phone.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_password" class="form-label">Password *</label>
+                            {{ form.password }}
+                            <small class="form-text text-muted">{{ form.password.help_text }}</small>
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback d-block">{{ form.password.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_password_confirm" class="form-label">Confirm Password *</label>
+                            {{ form.password_confirm }}
+                            {% if form.password_confirm.errors %}
+                                <div class="invalid-feedback d-block">{{ form.password_confirm.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Face Image Capture Section -->
+                        <div class="mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
+                            <label class="form-label"><i class="fas fa-camera"></i> Capture Face Photo *</label>
+                            <p class="text-muted small">Take a clear photo of your face for security purposes</p>
+                            
+                            <div style="max-width: 100%; margin: 0 auto;">
+                                <!-- Camera not started yet -->
+                                <div id="camera-start-section" class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> Click below to start camera and capture your face photo
+                                    <button type="button" class="btn btn-sm btn-primary ms-2" id="start-camera-btn">
+                                        <i class="fas fa-camera"></i> Start Camera
+                                    </button>
+                                </div>
+
+                                <!-- Camera feed (hidden initially) -->
+                                <video id="video" style="width: 100%; border-radius: 8px; margin-bottom: 15px; display: none;"></video>
+                                <canvas id="canvas" style="display: none; width: 100%; border-radius: 8px;"></canvas>
+                                
+                                <div id="camera-controls" style="display: none;" class="d-flex gap-2 mb-3">
+                                    <button type="button" class="btn btn-success flex-grow-1" id="capture-btn">
+                                        <i class="fas fa-camera"></i> Capture Photo
+                                    </button>
+                                    <button type="button" class="btn btn-warning" id="retake-btn" style="display: none;">
+                                        <i class="fas fa-redo"></i> Retake
+                                    </button>
+                                </div>
+                                
+                                <div id="preview-section" style="display: none;" class="alert alert-success">
+                                    <i class="fas fa-check-circle"></i> <strong>Photo captured successfully!</strong>
+                                    <p class="mb-0 mt-2 small">Ready to register</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Hidden input for face image -->
+                            {{ form.face_image }}
+                            {% if form.face_image.errors %}
+                                <div class="invalid-feedback d-block">{{ form.face_image.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-primary w-100 mb-3">
+                            <i class="fas fa-user-check"></i> Register
+                        </button>
+                    </form>
+
+                    <hr>
+                    <p class="text-center">Already have an account? <a href="{% url 'login' %}">Login here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Camera functionality for student registration
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('capture-btn');
+    const retakeBtn = document.getElementById('retake-btn');
+    const startCameraBtn = document.getElementById('start-camera-btn');
+    const cameraStartSection = document.getElementById('camera-start-section');
+    const cameraControls = document.getElementById('camera-controls');
+    const previewSection = document.getElementById('preview-section');
+    const faceImageInput = document.getElementById('id_face_image');
+    const ctx = canvas.getContext('2d');
+    let capturedImageData = null;
+    let cameraStarted = false;
+
+    // Start camera when button is clicked
+    startCameraBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: false
+            });
+            video.srcObject = stream;
+            
+            // Show camera and controls
+            cameraStartSection.style.display = 'none';
+            video.style.display = 'block';
+            cameraControls.style.display = 'flex';
+            cameraStarted = true;
+        } catch (error) {
+            console.error('Camera access denied:', error);
+            cameraStartSection.innerHTML = 
+                '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Camera access denied. Please allow camera permission in your browser settings and try again.</div>';
+        }
+    });
+
+    // Capture photo from camera
+    captureBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        // Store the captured image data
+        canvas.toBlob(function(blob) {
+            capturedImageData = blob;
+            
+            // Hide video and show canvas
+            video.style.display = 'none';
+            canvas.style.display = 'block';
+            previewSection.style.display = 'block';
+            captureBtn.textContent = '✓ Photo Captured';
+            captureBtn.disabled = true;
+            captureBtn.classList.remove('btn-success');
+            captureBtn.classList.add('btn-secondary');
+            retakeBtn.style.display = 'inline-block';
+        });
+    });
+
+    // Retake photo
+    retakeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        video.style.display = 'block';
+        canvas.style.display = 'none';
+        previewSection.style.display = 'none';
+        captureBtn.textContent = '<i class="fas fa-camera"></i> Capture Photo';
+        captureBtn.disabled = false;
+        captureBtn.classList.add('btn-success');
+        captureBtn.classList.remove('btn-secondary');
+        retakeBtn.style.display = 'none';
+        capturedImageData = null;
+    });
+
+    // Handle form submission
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        if (capturedImageData) {
+            // Add the captured image to the form data
+            const file = new File([capturedImageData], 'face_capture_registration.jpg', { type: 'image/jpeg' });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            faceImageInput.files = dataTransfer.files;
+        } else {
+            e.preventDefault();
+            alert('Please capture a face photo before registering.');
+        }
+    });
+
+    // Disable autocomplete on sensitive fields
+    document.addEventListener('DOMContentLoaded', function() {
+        const emailField = document.getElementById('id_email');
+        const passwordField = document.getElementById('id_password');
+        const passwordConfirmField = document.getElementById('id_password_confirm');
+        
+        if (emailField) {
+            emailField.setAttribute('autocomplete', 'off');
+            emailField.setAttribute('autoComplete', 'off');
+        }
+        
+        if (passwordField) {
+            passwordField.setAttribute('autocomplete', 'off');
+            passwordField.setAttribute('autoComplete', 'off');
+        }
+        
+        if (passwordConfirmField) {
+            passwordConfirmField.setAttribute('autocomplete', 'off');
+            passwordConfirmField.setAttribute('autoComplete', 'off');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Class - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-plus-square"></i> Create New Class Session</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Instructions -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Class Details:</h6>
+                        <ul class="mb-0" style="font-size: 0.9rem;">
+                            <li>Enter subject name and class section</li>
+                            <li>Set start and end times</li>
+                            <li>Duration will be calculated automatically</li>
+                            <li>A unique 6-character key will be generated</li>
+                            <li>Share this key with students to mark attendance</li>
+                        </ul>
+                    </div>
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_subject" class="form-label">Subject Name *</label>
+                            {{ form.subject }}
+                            {% if form.subject.errors %}
+                                <div class="invalid-feedback d-block">{{ form.subject.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_class_name" class="form-label">Class Section *</label>
+                            {{ form.class_name }}
+                            <small class="form-text text-muted">e.g., 10-A, 12-B, Section 1</small>
+                            {% if form.class_name.errors %}
+                                <div class="invalid-feedback d-block">{{ form.class_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_start_time" class="form-label">Start Time *</label>
+                                {{ form.start_time }}
+                                {% if form.start_time.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.start_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_end_time" class="form-label">End Time *</label>
+                                {{ form.end_time }}
+                                {% if form.end_time.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.end_time.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_duration_minutes" class="form-label">Duration (minutes) *</label>
+                            {{ form.duration_minutes }}
+                            <small class="form-text text-muted">15-480 minutes (15 min to 8 hours)</small>
+                            {% if form.duration_minutes.errors %}
+                                <div class="invalid-feedback d-block">{{ form.duration_minutes.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_description" class="form-label">Description/Topics</label>
+                            {{ form.description }}
+                            <small class="form-text text-muted">Optional: Add class topics or notes</small>
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback d-block">{{ form.description.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Form Errors -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <!-- Submit -->
+                        <button type="submit" class="btn btn-primary w-100 btn-lg mb-2">
+                            <i class="fas fa-check"></i> Create Class Session
+                        </button>
+
+                        <a href="{% url 'teacher_dashboard' %}" class="btn btn-outline-secondary w-100">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Class Key Info -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-key"></i> About Class Keys</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>What is a class key?</strong></p>
+                    <p>A unique 6-character code generated automatically for each class session. Students use this code to mark their attendance.</p>
+                    
+                    <p class="mt-3"><strong>Key Features:</strong></p>
+                    <ul>
+                        <li>✓ Automatically generated (unique for each class)</li>
+                        <li>✓ Valid only during the class session period</li>
+                        <li>✓ Can be regenerated if needed</li>
+                        <li>✓ Prevents unauthorized attendance marking</li>
+                    </ul>
+                    
+                    <p class="mt-3"><strong>Example:</strong> Class Key: <code>ABC123</code></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,172 @@
+Student Quick Reference Guide
+================================
+
+## Register Account
+
+1. Go to http://localhost:8000/student-register/
+2. Fill in:
+   - First Name & Last Name
+   - Email Address
+   - Roll Number (e.g., 001A, 042B)
+   - Class Name (e.g., 10-A, 12-B)
+   - Phone Number (optional)
+   - Password (minimum 8 characters)
+3. Click "Register"
+
+## Login
+
+- Visit: http://localhost:8000/login/
+- Email: Your registered email
+- Password: Your password
+- Check "Remember me" to stay logged in (optional)
+
+## Register Your Face (Important!)
+
+For secure attendance marking:
+
+1. Go to "Student Dashboard"
+2. Click "Register Face" button
+3. Upload a clear photo of your face:
+   - Good lighting required
+   - Face should be centered
+   - Look straight at camera
+   - No sunglasses or heavy makeup
+4. Click "Register Face"
+
+**Tips for best results:**
+✓ Good lighting
+✓ Frontal face position
+✓ Clear background
+✓ Image size: 100x100 to 1000x1000 pixels
+
+## Mark Attendance
+
+### What You Need
+- Unique class key (your teacher will provide)
+- Optional: Face image for verification
+
+### Steps
+1. Go to "Student Dashboard"
+2. Click "Mark Attendance"
+3. Enter the class key (6 characters)
+4. Upload face image (optional but recommended)
+5. Click "Mark Attendance"
+6. Success! Your attendance is marked
+
+**System verifies:**
+✓ Class key is valid
+✓ Class is currently active
+✓ You haven't already marked attendance
+✓ Your face matches (if registered)
+
+## View Attendance History
+
+To check your attendance records:
+
+1. Click "Attendance History"
+2. See all your attendance records
+3. Filter by:
+   - Date range
+   - Class name
+   - Subject
+4. View attendance percentage
+
+## Check Your Dashboard
+
+Your "Student Dashboard" shows:
+- Total classes attended
+- Number of classes present
+- Number of classes absent
+- Your attendance percentage
+- Recent attendance records
+
+## Important Rules
+
+⚠️ **What You Must Do:**
+✓ Register your face for security
+✓ Use the correct class key
+✓ Be present during the class period
+✓ One attendance per class
+✓ Have clear face image
+
+⚠️ **What You Cannot Do:**
+✗ Mark attendance for someone else
+✗ Mark attendance twice for same class
+✗ Mark attendance outside class time
+✗ Share your password
+✗ Use someone else's class key
+
+## Troubleshooting
+
+**"Invalid class key"**
+- Check key spelling (case doesn't matter)
+- Ask teacher for correct key
+- Verify class is currently active
+
+**"Face verification failed"**
+- Ensure good lighting
+- Take clear frontal photo
+- Face should be visible and clear
+- Try registering face again
+
+**"Attendance already marked"**
+- You've already marked for this class
+- Contact teacher if mistake was made
+
+**"Class not active"**
+- Teacher hasn't started the class yet
+- Wait for teacher to start
+- Class period may have ended
+
+## Update Your Face
+
+If your face image quality isn't good:
+
+1. Go to "Student Dashboard"
+2. Click "Update Face"
+3. Upload a new, clearer photo
+4. Click "Register Face"
+
+## Your Privacy
+
+Your data is secure:
+✓ Face image stored securely
+✓ Only used for verification
+✓ Not shared with others
+✓ Encrypted in database
+
+## Contact Your Teacher
+
+If you have issues:
+- Ask for correct class key
+- Ask if class is active
+- Request face verification assistance
+- Report technical problems
+
+## Important Dates
+
+- Classes happen during school hours
+- Each class has a specific time slot
+- Attendance only counted if marked during class
+- Reports generated at end of term
+
+## FAQ
+
+**Q: Can I mark attendance later?**
+A: No, only during the active class period
+
+**Q: What if I'm absent?**
+A: Contact your teacher to mark your absence
+
+**Q: Can teacher change my attendance?**
+A: Yes, teacher has authority to modify
+
+**Q: What's a good attendance percentage?**
+A: Usually 75% or above is considered good
+
+**Q: How do I reset my password?**
+A: Contact school administrator
+
+---
+
+For more information, see README.md or contact your teacher.

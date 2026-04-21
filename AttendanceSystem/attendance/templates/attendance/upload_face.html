@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Face - Attendance System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .camera-container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    video {
+        width: 100%;
+        border-radius: 8px;
+        background: #000;
+        margin-bottom: 15px;
+    }
+    
+    canvas {
+        display: none;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .quality-indicator {
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+        display: none;
+    }
+    
+    .quality-indicator.good {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .quality-indicator.poor {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-camera"></i> {% if face_registered %}Update{% else %}Register{% endif %} Face</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Status Badge -->
+                    <div class="mb-4">
+                        {% if face_registered %}
+                            <span class="badge bg-success">✓ Face Already Registered</span>
+                            <p class="text-muted mt-2">You can update your face image here for better recognition.</p>
+                        {% else %}
+                            <span class="badge bg-warning">⚠ Face Not Registered</span>
+                            <p class="text-muted mt-2">Register your face for secure attendance marking.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-lightbulb"></i> Tips for Best Results:</h6>
+                        <ul class="mb-0">
+                            <li>Good lighting is essential</li>
+                            <li>Face should be frontal (looking straight at camera)</li>
+                            <li>Avoid glasses, sunglasses, or heavy makeup</li>
+                            <li>Clear background preferred</li>
+                            <li>Image size: 100x100 to 1000x1000 pixels</li>
+                        </ul>
+                    </div>
+
+                    <!-- Upload Form -->
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_face_image" class="form-label">Upload Face Image</label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="id_face_image" name="face_image" 
+                                       accept="image/*" capture="environment" required>
+                                <label class="input-group-text" for="id_face_image">
+                                    <i class="fas fa-upload"></i>
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Supported formats: JPG, PNG, GIF (Max 5MB)
+                            </small>
+                            {% if form.face_image.errors %}
+                                <div class="invalid-feedback d-block">{{ form.face_image.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div id="preview-container" style="display: none;">
+                            <label class="form-label">Preview</label>
+                            <img id="preview-image" src="" alt="Preview" style="width: 100%; border-radius: 8px; margin-bottom: 15px;">
+                            <div class="quality-indicator" id="quality-info"></div>
+                        </div>
+
+                        <!-- Form Errors -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <!-- Submit -->
+                        <button type="submit" class="btn btn-primary w-100 btn-lg" id="submit-btn">
+                            <i class="fas fa-check"></i> {% if face_registered %}Update{% else %}Register{% endif %} Face
+                        </button>
+
+                        <hr>
+                        {% if face_registered %}
+                            <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-arrow-left"></i> Back to Dashboard
+                            </a>
+                        {% else %}
+                            <a href="{% url 'mark_attendance' %}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-check-circle"></i> Skip & Mark Attendance
+                            </a>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Image preview
+    document.getElementById('id_face_image').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('preview-image').src = event.target.result;
+                document.getElementById('preview-container').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+{% endblock %}
