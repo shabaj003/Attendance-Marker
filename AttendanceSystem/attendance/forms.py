@@ -97,7 +97,7 @@ class StudentRegistrationForm(BaseUserForm):
         })
     )
     face_image = forms.ImageField(
-        required=True,
+        required=False,
         widget=forms.FileInput(attrs={
             'class': 'form-control',
             'accept': 'image/*',
@@ -109,12 +109,19 @@ class StudentRegistrationForm(BaseUserForm):
     class Meta(BaseUserForm.Meta):
         fields = ('email', 'first_name', 'last_name', 'phone', 'roll_number', 'class_name', 'face_image')
     
-    def clean_roll_number(self):
-        """Validate roll number uniqueness"""
-        roll_number = self.cleaned_data.get('roll_number').upper()
-        if Student.objects.filter(roll_number=roll_number).exists():
-            raise ValidationError('This roll number is already registered.')
-        return roll_number
+    def __init__(self, *args, **kwargs):
+        self.face_image_data = kwargs.pop('face_image_data', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        face_image = cleaned_data.get('face_image')
+        face_image_data = self.face_image_data
+        
+        if not face_image and not face_image_data:
+            raise forms.ValidationError('Please provide a face image either by uploading a file or capturing from camera.')
+        
+        return cleaned_data
     
     def save(self, commit=True):
         user = super().save(commit=False)

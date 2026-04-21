@@ -97,7 +97,7 @@
                                 </div>
 
                                 <!-- Camera feed (hidden initially) -->
-                                <video id="video" style="width: 100%; border-radius: 8px; margin-bottom: 15px; display: none;"></video>
+                                <video id="video" style="width: 100%; border-radius: 8px; margin-bottom: 15px; display: none;" playsinline webkit-playsinline muted></video>
                                 <canvas id="canvas" style="display: none; width: 100%; border-radius: 8px;"></canvas>
                                 
                                 <div id="camera-controls" style="display: none;" class="d-flex gap-2 mb-3">
@@ -117,6 +117,7 @@
                             
                             <!-- Hidden input for face image -->
                             {{ form.face_image }}
+                            <input type="hidden" id="face_image_data" name="face_image_data">
                             {% if form.face_image.errors %}
                                 <div class="invalid-feedback d-block">{{ form.face_image.errors }}</div>
                             {% endif %}
@@ -158,21 +159,42 @@
     startCameraBtn.addEventListener('click', async function(e) {
         e.preventDefault();
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+            // Try front camera first, fallback to any camera
+            let constraints = {
+                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
                 audio: false
-            });
+            };
+            
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (frontCameraError) {
+                console.log('Front camera not available, trying any camera:', frontCameraError);
+                // Fallback to any available camera
+                constraints.video = { width: { ideal: 640 }, height: { ideal: 480 } };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            }
+            
             video.srcObject = stream;
             
-            // Show camera and controls
+            // Show camera and controls first
             cameraStartSection.style.display = 'none';
             video.style.display = 'block';
             cameraControls.style.display = 'flex';
             cameraStarted = true;
+            
+            // Then start playing
+            await video.play();
         } catch (error) {
             console.error('Camera access denied:', error);
+            let errorMsg = 'Camera access denied. ';
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                errorMsg += 'Camera access requires HTTPS. Please access this site over HTTPS or use localhost for development.';
+            } else {
+                errorMsg += 'Please allow camera permission in your browser settings and try again.';
+            }
             cameraStartSection.innerHTML = 
-                '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Camera access denied. Please allow camera permission in your browser settings and try again.</div>';
+                '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> ' + errorMsg + '</div>';
         }
     });
 
@@ -183,20 +205,19 @@
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
         
-        // Store the captured image data
-        canvas.toBlob(function(blob) {
-            capturedImageData = blob;
-            
-            // Hide video and show canvas
-            video.style.display = 'none';
-            canvas.style.display = 'block';
-            previewSection.style.display = 'block';
-            captureBtn.textContent = '✓ Photo Captured';
-            captureBtn.disabled = true;
-            captureBtn.classList.remove('btn-success');
-            captureBtn.classList.add('btn-secondary');
-            retakeBtn.style.display = 'inline-block';
-        });
+        // Convert canvas to data URL with lower quality for mobile
+        const dataURL = canvas.toDataURL('image/jpeg', 0.7);
+        capturedImageData = dataURL;
+        
+        // Hide video and show canvas
+        video.style.display = 'none';
+        canvas.style.display = 'block';
+        previewSection.style.display = 'block';
+        captureBtn.textContent = '✓ Photo Captured';
+        captureBtn.disabled = true;
+        captureBtn.classList.remove('btn-success');
+        captureBtn.classList.add('btn-secondary');
+        retakeBtn.style.display = 'inline-block';
     });
 
     // Retake photo
@@ -211,17 +232,15 @@
         captureBtn.classList.remove('btn-secondary');
         retakeBtn.style.display = 'none';
         capturedImageData = null;
+        document.getElementById('face_image_data').value = '';
     });
 
     // Handle form submission
     const form = document.querySelector('form');
     form.addEventListener('submit', function(e) {
         if (capturedImageData) {
-            // Add the captured image to the form data
-            const file = new File([capturedImageData], 'face_capture_registration.jpg', { type: 'image/jpeg' });
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            faceImageInput.files = dataTransfer.files;
+            // Set the data URL in the hidden input
+            document.getElementById('face_image_data').value = capturedImageData;
         } else {
             e.preventDefault();
             alert('Please capture a face photo before registering.');

@@ -3,6 +3,7 @@ Views for Attendance Management System
 """
 import json
 import base64
+import io
 import logging
 from datetime import datetime, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
@@ -12,6 +13,7 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import Q, Count, F
 from django.utils import timezone
 from django.core.paginator import Paginator
@@ -39,7 +41,8 @@ def student_register(request):
     # Allow users to view and register (logout option available)
     
     if request.method == 'POST':
-        form = StudentRegistrationForm(request.POST, request.FILES)
+        face_image_data = request.POST.get('face_image_data')
+        form = StudentRegistrationForm(request.POST, request.FILES, face_image_data=face_image_data)
         if form.is_valid():
             user = form.save(commit=False)
             user.set_password(form.cleaned_data['password'])
@@ -55,9 +58,32 @@ def student_register(request):
             
             # Register face if provided
             face_image = request.FILES.get('face_image')
+            face_image_data = request.POST.get('face_image_data')
+            
             if face_image:
+                # Handle uploaded file
+                image_file = face_image
+            elif face_image_data:
+                # Handle base64 data from camera capture
                 try:
-                    success, msg, _ = face_manager.register_face(user, face_image)
+                    image_data = base64.b64decode(face_image_data.split(',')[1])
+                    image_file = InMemoryUploadedFile(
+                        io.BytesIO(image_data),
+                        'ImageField',
+                        'face_registration.jpg',
+                        'image/jpeg',
+                        len(image_data),
+                        None
+                    )
+                except Exception as e:
+                    logger.error(f"Error processing face image data: {str(e)}")
+                    image_file = None
+            else:
+                image_file = None
+            
+            if image_file:
+                try:
+                    success, msg, _ = face_manager.register_face(user, image_file)
                     if success:
                         messages.success(request, 'Face registered successfully! Please login.')
                     else:
