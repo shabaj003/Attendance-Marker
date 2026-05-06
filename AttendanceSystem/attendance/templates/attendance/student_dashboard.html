@@ -2,11 +2,61 @@
 
 {% block title %}Student Dashboard - Attendance System{% endblock %}
 
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        animation: slideInFromTop 0.5s ease-out;
+        margin-bottom: 30px;
+    }
+    
+    .dashboard-header h2 {
+        font-weight: 700;
+        color: #333;
+    }
+    
+    .dashboard-header h2 i {
+        animation: rotateIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        color: #667eea;
+        margin-right: 10px;
+    }
+    
+    .stat-card {
+        animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+    
+    .card-header {
+        animation: slideInFromTop 0.4s ease-out;
+    }
+    
+    .card-body {
+        animation: fadeIn 0.5s ease-out 0.1s backwards;
+    }
+    
+    .card .btn {
+        animation: slideInFromBottom 0.4s ease-out;
+        margin-bottom: 8px;
+    }
+    
+    table tbody tr {
+        animation: fadeIn 0.4s ease-out;
+    }
+    
+    table tbody tr:hover {
+        animation: none;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="row mb-4">
         <div class="col">
-            <h2><i class="fas fa-tachometer-alt"></i> Student Dashboard</h2>
+            <h2 class="dashboard-header"><i class="fas fa-tachometer-alt"></i> Student Dashboard</h2>
         </div>
     </div>
 
@@ -39,18 +89,18 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{% url 'mark_attendance' %}" class="btn btn-primary">
+                        <a href="{% url 'mark_attendance' %}" class="btn btn-primary slide-in-bottom">
                             <i class="fas fa-check-square"></i> Mark Attendance
                         </a>
-                        <a href="{% url 'attendance_history' %}" class="btn btn-secondary">
+                        <a href="{% url 'attendance_history' %}" class="btn btn-secondary slide-in-bottom">
                             <i class="fas fa-history"></i> Attendance History
                         </a>
                         {% if not user.face_registered %}
-                            <a href="{% url 'upload_face' %}" class="btn btn-warning">
+                            <a href="{% url 'upload_face' %}" class="btn btn-warning slide-in-bottom">
                                 <i class="fas fa-camera"></i> Register Face
                             </a>
                         {% else %}
-                            <a href="{% url 'upload_face' %}" class="btn btn-info">
+                            <a href="{% url 'upload_face' %}" class="btn btn-info slide-in-bottom">
                                 <i class="fas fa-camera"></i> Update Face
                             </a>
                         {% endif %}

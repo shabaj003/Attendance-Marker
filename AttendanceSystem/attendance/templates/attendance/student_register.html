@@ -2,6 +2,34 @@
 
 {% block title %}Student Registration - Attendance System{% endblock %}
 
+{% block extra_css %}
+<style>
+    #video {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        border-radius: 8px;
+        background-color: #000;
+        object-fit: cover;
+    }
+    
+    #canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        border-radius: 8px;
+    }
+    
+    @media (max-width: 768px) {
+        #video, #canvas {
+            max-width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -97,8 +125,8 @@
                                 </div>
 
                                 <!-- Camera feed (hidden initially) -->
-                                <video id="video" style="width: 100%; border-radius: 8px; margin-bottom: 15px; display: none;" playsinline webkit-playsinline muted></video>
-                                <canvas id="canvas" style="display: none; width: 100%; border-radius: 8px;"></canvas>
+                                <video id="video" width="640" height="480" style="width: 100%; height: auto; border-radius: 8px; margin-bottom: 15px; display: none; object-fit: cover; background-color: #000;" playsinline webkit-playsinline muted autoplay></video>
+                                <canvas id="canvas" width="640" height="480" style="display: none; width: 100%; height: auto; border-radius: 8px;"></canvas>
                                 
                                 <div id="camera-controls" style="display: none;" class="d-flex gap-2 mb-3">
                                     <button type="button" class="btn btn-success flex-grow-1" id="capture-btn">
@@ -150,74 +178,225 @@
     const cameraStartSection = document.getElementById('camera-start-section');
     const cameraControls = document.getElementById('camera-controls');
     const previewSection = document.getElementById('preview-section');
-    const faceImageInput = document.getElementById('id_face_image');
+    const faceImageDataInput = document.getElementById('face_image_data');
     const ctx = canvas.getContext('2d');
+    const HAVE_CURRENT_DATA = (typeof HTMLMediaElement !== 'undefined' && HTMLMediaElement.HAVE_CURRENT_DATA) || 2;
+    const CAPTURE_DEFAULT_LABEL = '<i class="fas fa-camera"></i> Capture Photo';
+    const CAPTURE_SUCCESS_LABEL = '<i class="fas fa-check"></i> Photo Captured';
     let capturedImageData = null;
     let cameraStarted = false;
+    let cameraStream = null;
+
+    function isVideoFrameReady() {
+        return video.readyState >= HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0;
+    }
+
+    function setCaptureButtonDefaultState() {
+        captureBtn.innerHTML = CAPTURE_DEFAULT_LABEL;
+        captureBtn.disabled = false;
+        captureBtn.classList.add('btn-success');
+        captureBtn.classList.remove('btn-secondary');
+    }
+
+    function setCaptureButtonSuccessState() {
+        captureBtn.innerHTML = CAPTURE_SUCCESS_LABEL;
+        captureBtn.disabled = true;
+        captureBtn.classList.remove('btn-success');
+        captureBtn.classList.add('btn-secondary');
+    }
+
+    function stopCameraStream() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+    }
+
+    function waitForVideoFrame(timeoutMs = 5000) {
+        if (isVideoFrameReady()) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                cleanup();
+                reject(new Error('Timed out waiting for video frame'));
+            }, timeoutMs);
+
+            const onReady = () => {
+                if (isVideoFrameReady()) {
+                    cleanup();
+                    resolve();
+                }
+            };
+
+            const cleanup = () => {
+                clearTimeout(timeoutId);
+                video.removeEventListener('loadeddata', onReady);
+                video.removeEventListener('canplay', onReady);
+                video.removeEventListener('playing', onReady);
+            };
+
+            video.addEventListener('loadeddata', onReady);
+            video.addEventListener('canplay', onReady);
+            video.addEventListener('playing', onReady);
+            onReady();
+        });
+    }
 
     // Start camera when button is clicked
     startCameraBtn.addEventListener('click', async function(e) {
         e.preventDefault();
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            cameraStartSection.innerHTML =
+                '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Camera is not supported in this browser. Please use a modern browser like Chrome or Safari.</div>';
+            return;
+        }
+
+        startCameraBtn.disabled = true;
+        startCameraBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting camera...';
+        captureBtn.disabled = true;
+
         try {
-            // Try front camera first, fallback to any camera
-            let constraints = {
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-                audio: false
-            };
-            
-            let stream;
-            try {
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (frontCameraError) {
-                console.log('Front camera not available, trying any camera:', frontCameraError);
-                // Fallback to any available camera
-                constraints.video = { width: { ideal: 640 }, height: { ideal: 480 } };
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            // Mobile-first constraints with fallback for older devices
+            const constraintFallbacks = [
+                {
+                    audio: false,
+                    video: {
+                        facingMode: { ideal: 'user' },
+                        width: { ideal: 640, max: 1280 },
+                        height: { ideal: 480, max: 720 }
+                    }
+                },
+                {
+                    audio: false,
+                    video: { facingMode: 'user' }
+                },
+                {
+                    audio: false,
+                    video: true
+                }
+            ];
+
+            let stream = null;
+            let lastConstraintError = null;
+
+            for (const constraints of constraintFallbacks) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    break;
+                } catch (error) {
+                    lastConstraintError = error;
+                    console.warn('Camera constraints failed, trying fallback:', constraints, error);
+                }
             }
-            
+
+            if (!stream) {
+                throw lastConstraintError || new Error('Unable to access camera stream');
+            }
+
+            cameraStream = stream;
+
+            // Assign stream to video
             video.srcObject = stream;
-            
-            // Show camera and controls first
+            video.setAttribute('playsinline', 'true');
+            video.setAttribute('webkit-playsinline', 'true');
+            video.muted = true;
+            video.autoplay = true;
+
+            // Show camera and controls
             cameraStartSection.style.display = 'none';
             video.style.display = 'block';
             cameraControls.style.display = 'flex';
-            cameraStarted = true;
-            
-            // Then start playing
+            canvas.style.display = 'none';
+            previewSection.style.display = 'none';
+            retakeBtn.style.display = 'none';
+            setCaptureButtonDefaultState();
+
+            // Start playing and wait for first real frame
             await video.play();
+            await waitForVideoFrame(6000);
+            captureBtn.disabled = false;
+
+            startCameraBtn.style.display = 'none';
+            cameraStarted = true;
         } catch (error) {
-            console.error('Camera access denied:', error);
+            console.error('Camera access error:', error);
+            stopCameraStream();
+            startCameraBtn.disabled = false;
+            startCameraBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera';
+
             let errorMsg = 'Camera access denied. ';
-            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            if (error.name === 'NotAllowedError') {
+                errorMsg = 'You denied camera access. Please allow camera permission and try again.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMsg = 'No camera found on this device.';
+            } else if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
                 errorMsg += 'Camera access requires HTTPS. Please access this site over HTTPS or use localhost for development.';
             } else {
-                errorMsg += 'Please allow camera permission in your browser settings and try again.';
+                errorMsg += 'Please check your browser settings and try again.';
             }
-            cameraStartSection.innerHTML = 
+
+            cameraStartSection.innerHTML =
                 '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> ' + errorMsg + '</div>';
         }
     });
 
     // Capture photo from camera
-    captureBtn.addEventListener('click', function(e) {
+    captureBtn.addEventListener('click', async function(e) {
         e.preventDefault();
+
+        if (!cameraStarted || !cameraStream) {
+            alert('Please start the camera first.');
+            return;
+        }
+
+        if (!isVideoFrameReady()) {
+            try {
+                await waitForVideoFrame(2500);
+            } catch (error) {
+                alert('Camera is still loading. Please wait a moment and try again.');
+                return;
+            }
+        }
+
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
+        // Ensure canvas has correct dimensions
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        
-        // Convert canvas to data URL with lower quality for mobile
-        const dataURL = canvas.toDataURL('image/jpeg', 0.7);
-        capturedImageData = dataURL;
-        
-        // Hide video and show canvas
-        video.style.display = 'none';
-        canvas.style.display = 'block';
-        previewSection.style.display = 'block';
-        captureBtn.textContent = '✓ Photo Captured';
-        captureBtn.disabled = true;
-        captureBtn.classList.remove('btn-success');
-        captureBtn.classList.add('btn-secondary');
-        retakeBtn.style.display = 'inline-block';
+
+        // Check if video has valid dimensions
+        if (canvas.width === 0 || canvas.height === 0) {
+            alert('Camera is not ready yet. Please wait a moment and try again.');
+            return;
+        }
+
+        // Draw video frame to canvas
+        try {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert canvas to data URL with appropriate quality
+            const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+
+            if (!dataURL || dataURL === 'data:image/jpeg;base64,') {
+                alert('Failed to capture image. Please ensure camera is working properly.');
+                return;
+            }
+
+            capturedImageData = dataURL;
+
+            // Hide video and show canvas
+            video.style.display = 'none';
+            canvas.style.display = 'block';
+            previewSection.style.display = 'block';
+            setCaptureButtonSuccessState();
+            retakeBtn.style.display = 'inline-block';
+        } catch (error) {
+            console.error('Error capturing image:', error);
+            alert('Error capturing image. Please try again.');
+        }
     });
 
     // Retake photo
@@ -226,13 +405,10 @@
         video.style.display = 'block';
         canvas.style.display = 'none';
         previewSection.style.display = 'none';
-        captureBtn.textContent = '<i class="fas fa-camera"></i> Capture Photo';
-        captureBtn.disabled = false;
-        captureBtn.classList.add('btn-success');
-        captureBtn.classList.remove('btn-secondary');
+        setCaptureButtonDefaultState();
         retakeBtn.style.display = 'none';
         capturedImageData = null;
-        document.getElementById('face_image_data').value = '';
+        faceImageDataInput.value = '';
     });
 
     // Handle form submission
@@ -240,7 +416,7 @@
     form.addEventListener('submit', function(e) {
         if (capturedImageData) {
             // Set the data URL in the hidden input
-            document.getElementById('face_image_data').value = capturedImageData;
+            faceImageDataInput.value = capturedImageData;
         } else {
             e.preventDefault();
             alert('Please capture a face photo before registering.');
@@ -252,21 +428,26 @@
         const emailField = document.getElementById('id_email');
         const passwordField = document.getElementById('id_password');
         const passwordConfirmField = document.getElementById('id_password_confirm');
-        
+
         if (emailField) {
             emailField.setAttribute('autocomplete', 'off');
             emailField.setAttribute('autoComplete', 'off');
         }
-        
+
         if (passwordField) {
             passwordField.setAttribute('autocomplete', 'off');
             passwordField.setAttribute('autoComplete', 'off');
         }
-        
+
         if (passwordConfirmField) {
             passwordConfirmField.setAttribute('autocomplete', 'off');
             passwordConfirmField.setAttribute('autoComplete', 'off');
         }
     });
+
+    // Release camera when leaving the page
+    window.addEventListener('pagehide', stopCameraStream);
+    window.addEventListener('beforeunload', stopCameraStream);
 </script>
 {% endblock %}
+

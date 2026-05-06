@@ -4,6 +4,11 @@
 
 {% block extra_css %}
 <style>
+    .page-title {
+        animation: slideInFromLeft 0.5s ease-out;
+        margin-bottom: 30px;
+    }
+    
     .camera-container {
         max-width: 500px;
         margin: 0 auto;
@@ -11,24 +16,73 @@
         padding: 20px;
         border-radius: 10px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
     video, canvas {
         width: 100%;
         border-radius: 8px;
         margin-bottom: 15px;
+        animation: fadeIn 0.4s ease-out;
+        transition: all 0.3s ease;
+    }
+    
+    video:hover, canvas:hover {
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
     }
     
     .form-section {
         margin-bottom: 30px;
+        animation: slideInFromBottom 0.5s ease-out;
+    }
+    
+    .form-section:nth-child(1) {
+        animation-delay: 0.1s;
+    }
+    
+    .form-section:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .form-section:nth-child(3) {
+        animation-delay: 0.3s;
     }
     
     .class-info {
-        background: #e7f3ff;
+        background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%);
         padding: 15px;
         border-radius: 8px;
         margin-bottom: 20px;
         border-left: 4px solid #667eea;
+        animation: slideInFromLeft 0.4s ease-out;
+        transition: all 0.3s ease;
+    }
+    
+    .class-info:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+    
+    .class-info p {
+        margin: 8px 0;
+        animation: fadeIn 0.5s ease-out;
+    }
+    
+    #capture-btn, #retake-btn {
+        transition: all 0.3s ease;
+        animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    #preview-section {
+        animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    
+    .form-control {
+        animation: slideInFromBottom 0.4s ease-out;
+    }
+    
+    .btn-lg {
+        animation: slideInFromBottom 0.5s ease-out 0.5s backwards;
     }
 </style>
 {% endblock %}
@@ -37,7 +91,7 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <h2 class="mb-4"><i class="fas fa-check-circle"></i> Mark Attendance</h2>
+            <h2 class="page-title"><i class="fas fa-check-circle"></i> Mark Attendance</h2>
             
             <form method="post" enctype="multipart/form-data" novalidate>
                 {% csrf_token %}
@@ -55,20 +109,20 @@
                 <!-- Class Information (will be shown via API) -->
                 <div id="class-info" class="form-section" style="display: none;">
                     <div class="class-info">
-                        <p><strong>Subject:</strong> <span id="subject"></span></p>
-                        <p><strong>Class:</strong> <span id="class-name"></span></p>
-                        <p><strong>Expires at:</strong> <span id="end-time"></span></p>
+                        <p><strong><i class="fas fa-book"></i> Subject:</strong> <span id="subject"></span></p>
+                        <p><strong><i class="fas fa-chalkboard"></i> Class:</strong> <span id="class-name"></span></p>
+                        <p><strong><i class="fas fa-clock"></i> Expires at:</strong> <span id="end-time"></span></p>
                     </div>
                 </div>
 
                 <!-- Face Capture -->
                 {% if user.face_registered %}
                     <div class="form-section">
-                        <label class="form-label">Face Verification - Capture Live Photo</label>
+                        <label class="form-label"><i class="fas fa-camera"></i> Face Verification - Capture Live Photo</label>
                         
                         <div class="camera-container">
-                            <video id="video" playsinline autoplay></video>
-                            <canvas id="canvas" style="display: none;"></canvas>
+                            <video id="video" playsinline autoplay muted width="640" height="480"></video>
+                            <canvas id="canvas" style="display: none;" width="640" height="480"></canvas>
                             <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-success flex-grow-1" id="capture-btn">
                                     <i class="fas fa-camera"></i> Capture Photo
@@ -85,7 +139,7 @@
                         </div>
                     </div>
                 {% else %}
-                    <div class="alert alert-warning">
+                    <div class="alert alert-warning slide-in-top">
                         <i class="fas fa-exclamation-triangle"></i> 
                         <strong>Face Not Registered:</strong> 
                         <a href="{% url 'upload_face' %}">Register your face</a> for enhanced security
@@ -103,7 +157,7 @@
                 </button>
 
                 <hr>
-                <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary w-100">
+                <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary w-100 slide-in-bottom">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
             </form>
@@ -120,42 +174,175 @@
     const retakeBtn = document.getElementById('retake-btn');
     const previewSection = document.getElementById('preview-section');
     const ctx = canvas.getContext('2d');
+    const HAVE_CURRENT_DATA = (typeof HTMLMediaElement !== 'undefined' && HTMLMediaElement.HAVE_CURRENT_DATA) || 2;
+    const CAPTURE_DEFAULT_LABEL = '<i class="fas fa-camera"></i> Capture Photo';
+    const CAPTURE_SUCCESS_LABEL = '<i class="fas fa-check"></i> Photo Captured';
     let capturedImageData = null;
+    let cameraStream = null;
+    let cameraReady = false;
 
-    // Initialize camera on page load
-    window.addEventListener('load', async function() {
+    function isVideoFrameReady() {
+        return video.readyState >= HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0;
+    }
+
+    function setCaptureButtonDefaultState() {
+        captureBtn.innerHTML = CAPTURE_DEFAULT_LABEL;
+        captureBtn.disabled = false;
+        captureBtn.classList.add('btn-success');
+        captureBtn.classList.remove('btn-secondary');
+    }
+
+    function setCaptureButtonSuccessState() {
+        captureBtn.innerHTML = CAPTURE_SUCCESS_LABEL;
+        captureBtn.disabled = true;
+        captureBtn.classList.remove('btn-success');
+        captureBtn.classList.add('btn-secondary');
+    }
+
+    function stopCameraStream() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+    }
+
+    function waitForVideoFrame(timeoutMs = 5000) {
+        if (isVideoFrameReady()) {
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                cleanup();
+                reject(new Error('Timed out waiting for video frame'));
+            }, timeoutMs);
+
+            const onReady = () => {
+                if (isVideoFrameReady()) {
+                    cleanup();
+                    resolve();
+                }
+            };
+
+            const cleanup = () => {
+                clearTimeout(timeoutId);
+                video.removeEventListener('loadeddata', onReady);
+                video.removeEventListener('canplay', onReady);
+                video.removeEventListener('playing', onReady);
+            };
+
+            video.addEventListener('loadeddata', onReady);
+            video.addEventListener('canplay', onReady);
+            video.addEventListener('playing', onReady);
+            onReady();
+        });
+    }
+
+    async function initializeCamera() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-                audio: false
-            });
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('getUserMedia_not_supported');
+            }
+
+            const constraintFallbacks = [
+                {
+                    audio: false,
+                    video: {
+                        facingMode: { ideal: 'user' },
+                        width: { ideal: 640, max: 1280 },
+                        height: { ideal: 480, max: 720 }
+                    }
+                },
+                {
+                    audio: false,
+                    video: { facingMode: 'user' }
+                },
+                {
+                    audio: false,
+                    video: true
+                }
+            ];
+
+            let stream = null;
+            let lastConstraintError = null;
+
+            for (const constraints of constraintFallbacks) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    break;
+                } catch (error) {
+                    lastConstraintError = error;
+                    console.warn('Camera constraints failed, trying fallback:', constraints, error);
+                }
+            }
+
+            if (!stream) {
+                throw lastConstraintError || new Error('Unable to access camera stream');
+            }
+
+            cameraStream = stream;
             video.srcObject = stream;
+            video.setAttribute('playsinline', 'true');
+            video.setAttribute('webkit-playsinline', 'true');
+            video.muted = true;
+            video.autoplay = true;
+
+            await video.play();
+            await waitForVideoFrame(6000);
+
+            cameraReady = true;
+            setCaptureButtonDefaultState();
         } catch (error) {
             console.error('Camera access denied:', error);
             document.querySelector('.camera-container').innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Camera access denied. Please allow camera permission and refresh the page.</div>';
         }
-    });
+    }
+
+    // Initialize camera on page load
+    window.addEventListener('load', initializeCamera);
 
     // Capture photo from camera
-    captureBtn.addEventListener('click', function() {
+    captureBtn.addEventListener('click', async function() {
+        if (!cameraReady || !cameraStream) {
+            alert('Camera is not ready yet. Please wait a moment and try again.');
+            return;
+        }
+
+        if (!isVideoFrameReady()) {
+            try {
+                await waitForVideoFrame(2500);
+            } catch (error) {
+                alert('Camera is still loading. Please wait a moment and try again.');
+                return;
+            }
+        }
+
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        
-        // Store the captured image data
-        canvas.toBlob(function(blob) {
-            capturedImageData = blob;
-            
-            // Hide video and show canvas
-            video.style.display = 'none';
-            canvas.style.display = 'block';
-            previewSection.style.display = 'block';
-            captureBtn.textContent = '✓ Photo Captured';
-            captureBtn.disabled = true;
-            captureBtn.classList.remove('btn-success');
-            captureBtn.classList.add('btn-secondary');
-            retakeBtn.style.display = 'inline-block';
-        });
+
+        if (canvas.width === 0 || canvas.height === 0) {
+            alert('Camera is not ready yet. Please wait a moment and try again.');
+            return;
+        }
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+        if (!blob) {
+            alert('Failed to capture image. Please try again.');
+            return;
+        }
+
+        capturedImageData = blob;
+
+        // Hide video and show canvas
+        video.style.display = 'none';
+        canvas.style.display = 'block';
+        previewSection.style.display = 'block';
+        setCaptureButtonSuccessState();
+        retakeBtn.style.display = 'inline-block';
     });
 
     // Retake photo
@@ -163,10 +350,7 @@
         video.style.display = 'block';
         canvas.style.display = 'none';
         previewSection.style.display = 'none';
-        captureBtn.textContent = '<i class="fas fa-camera"></i> Capture Photo';
-        captureBtn.disabled = false;
-        captureBtn.classList.add('btn-success');
-        captureBtn.classList.remove('btn-secondary');
+        setCaptureButtonDefaultState();
         retakeBtn.style.display = 'none';
         capturedImageData = null;
     });
@@ -177,9 +361,8 @@
         if (capturedImageData && {% if user.face_registered %}true{% else %}false{% endif %}) {
             // Add the captured image to the form data
             const formData = new FormData(form);
-            const file = new File([capturedImageData], 'face_capture.jpg', { type: 'image/jpeg' });
-            formData.set('face_image', file);
-            
+            formData.set('face_image', capturedImageData, 'face_capture.jpg');
+
             // Submit form with captured image
             e.preventDefault();
             fetch(form.action, {
@@ -228,6 +411,11 @@
             });
         }
     });
+
+    // Release camera when leaving the page
+    window.addEventListener('pagehide', stopCameraStream);
+    window.addEventListener('beforeunload', stopCameraStream);
 </script>
 {% endif %}
 {% endblock %}
+

@@ -2,19 +2,173 @@
 
 {% block title %}Home - Attendance Management System{% endblock %}
 
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 100px 0;
+        animation: slideInFromTop 0.8s ease-out;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 400px;
+        height: 400px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    .hero-section::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -5%;
+        width: 300px;
+        height: 300px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        animation: float 4s ease-in-out infinite reverse;
+    }
+    
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-content h1 {
+        font-size: 3rem;
+        margin-bottom: 20px;
+        animation: slideInFromLeft 0.6s ease-out;
+        font-weight: 700;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .hero-content h1 i {
+        animation: rotateIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        display: inline-block;
+    }
+    
+    .hero-tagline {
+        font-size: 1.3rem;
+        margin-bottom: 30px;
+        animation: slideInFromRight 0.7s ease-out 0.1s backwards;
+    }
+    
+    .hero-buttons {
+        animation: fadeIn 0.6s ease-out 0.3s backwards;
+    }
+    
+    .hero-buttons .btn {
+        animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        margin: 10px;
+    }
+    
+    .hero-buttons .btn:nth-child(1) {
+        animation-delay: 0.4s;
+    }
+    
+    .hero-buttons .btn:nth-child(2) {
+        animation-delay: 0.5s;
+    }
+    
+    .hero-buttons .btn:nth-child(3) {
+        animation-delay: 0.6s;
+    }
+    
+    .features-section {
+        padding: 80px 0;
+        animation: fadeIn 0.8s ease-out;
+    }
+    
+    .features-section h2 {
+        animation: slideInFromTop 0.6s ease-out;
+        margin-bottom: 60px;
+        position: relative;
+    }
+    
+    .features-section h2::after {
+        content: '';
+        display: block;
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        margin: 20px auto 0;
+        border-radius: 2px;
+        animation: slideInFromLeft 0.6s ease-out 0.2s backwards;
+    }
+    
+    .feature-card {
+        animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        height: 100%;
+    }
+    
+    .feature-card:nth-child(1) { animation-delay: 0.1s; }
+    .feature-card:nth-child(2) { animation-delay: 0.2s; }
+    .feature-card:nth-child(3) { animation-delay: 0.3s; }
+    .feature-card:nth-child(4) { animation-delay: 0.4s; }
+    .feature-card:nth-child(5) { animation-delay: 0.5s; }
+    .feature-card:nth-child(6) { animation-delay: 0.6s; }
+    
+    .feature-card .card-body {
+        animation: fadeIn 0.8s ease-out;
+    }
+    
+    .feature-card i {
+        animation: float 2s ease-in-out infinite;
+        transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover i {
+        animation: heartbeat 0.6s ease-out, float 2s ease-in-out infinite;
+    }
+    
+    .cta-section {
+        background: #f9f9f9;
+        padding: 80px 0;
+        animation: fadeIn 0.8s ease-out 0.3s backwards;
+    }
+    
+    .cta-section h2 {
+        animation: slideInFromLeft 0.6s ease-out;
+    }
+    
+    .cta-button {
+        animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s backwards;
+    }
+    
+    @media (max-width: 768px) {
+        .hero-content h1 {
+            font-size: 2rem;
+        }
+        
+        .hero-tagline {
+            font-size: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <section style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 100px 0;">
-        <div class="container text-center">
-            <h1 style="font-size: 3rem; margin-bottom: 20px;">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container hero-content text-center">
+            <h1>
                 <i class="fas fa-clipboard-check"></i> Attendance Management System
             </h1>
-            <p style="font-size: 1.3rem; margin-bottom: 30px;">
+            <p class="hero-tagline">
                 Secure. Fast. Reliable. Face Recognition-Based Attendance Tracking
             </p>
             
             {% if not user.is_authenticated %}
-                <div class="row justify-content-center gap-3">
+                <div class="row justify-content-center gap-3 hero-buttons">
                     <div class="col-auto">
                         <a href="{% url 'student_register' %}" class="btn btn-light btn-lg">
                             <i class="fas fa-user-graduate"></i> Register as Student
@@ -35,12 +189,13 @@
         </div>
     </section>
 
-    <section style="padding: 80px 0;">
+    <!-- Features Section -->
+    <section class="features-section">
         <div class="container">
-            <h2 class="text-center mb-5">Features</h2>
+            <h2 class="text-center">Key Features</h2>
             <div class="row">
                 <div class="col-md-4 mb-4">
-                    <div class="card text-center h-100">
+                    <div class="card text-center h-100 feature-card">
                         <div class="card-body">
                             <i class="fas fa-face-smile" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
                             <h5 class="card-title">Face Recognition</h5>
@@ -49,7 +204,7 @@
                     </div>
                 </div>
                 <div class="col-md-4 mb-4">
-                    <div class="card text-center h-100">
+                    <div class="card text-center h-100 feature-card">
                         <div class="card-body">
                             <i class="fas fa-key" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
                             <h5 class="card-title">Unique Class Keys</h5>
@@ -58,7 +213,7 @@
                     </div>
                 </div>
                 <div class="col-md-4 mb-4">
-                    <div class="card text-center h-100">
+                    <div class="card text-center h-100 feature-card">
                         <div class="card-body">
                             <i class="fas fa-chart-bar" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
                             <h5 class="card-title">Real-time Reports</h5>
@@ -67,7 +222,7 @@
                     </div>
                 </div>
                 <div class="col-md-4 mb-4">
-                    <div class="card text-center h-100">
+                    <div class="card text-center h-100 feature-card">
                         <div class="card-body">
                             <i class="fas fa-lock" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
                             <h5 class="card-title">Secure & Verified</h5>
@@ -76,7 +231,7 @@
                     </div>
                 </div>
                 <div class="col-md-4 mb-4">
-                    <div class="card text-center h-100">
+                    <div class="card text-center h-100 feature-card">
                         <div class="card-body">
                             <i class="fas fa-mobile-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
                             <h5 class="card-title">Mobile Ready</h5>
@@ -85,7 +240,7 @@
                     </div>
                 </div>
                 <div class="col-md-4 mb-4">
-                    <div class="card text-center h-100">
+                    <div class="card text-center h-100 feature-card">
                         <div class="card-body">
                             <i class="fas fa-database" style="font-size: 3rem; color: #667eea; margin-bottom: 20px;"></i>
                             <h5 class="card-title">Data Management</h5>
@@ -97,7 +252,8 @@
         </div>
     </section>
 
-    <section style="background: #f9f9f9; padding: 80px 0;">
+    <!-- CTA Section -->
+    <section class="cta-section">
         <div class="container">
             <h2 class="text-center mb-5">How It Works</h2>
             <div class="row">
