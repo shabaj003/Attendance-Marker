@@ -6,6 +6,7 @@ from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.core.exceptions import ValidationError
 from .models import User, Student, Teacher, AttendanceRecord, ClassSession
 import re
+from datetime import datetime
 
 
 class BaseUserForm(forms.ModelForm):
@@ -234,21 +235,47 @@ class FaceRegistrationForm(forms.Form):
 
 
 class CreateClassSessionForm(forms.ModelForm):
-    """Form for teachers to create class sessions"""
-    duration_minutes = forms.IntegerField(
-        min_value=15,
-        max_value=480,
-        widget=forms.NumberInput(attrs={
+    """Form for teachers to create recurring class schedules"""
+    schedule_start_date = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Duration in minutes (15-480)',
-            'step': '15'
-        }),
-        help_text='Class duration in minutes'
+            'type': 'date'
+        })
+    )
+    schedule_end_date = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    daily_start_time = forms.TimeField(
+        required=True,
+        widget=forms.TimeInput(attrs={
+            'class': 'form-control',
+            'type': 'time'
+        })
+    )
+    daily_end_time = forms.TimeField(
+        required=True,
+        widget=forms.TimeInput(attrs={
+            'class': 'form-control',
+            'type': 'time'
+        })
     )
     
     class Meta:
         model = ClassSession
-        fields = ('subject', 'class_name', 'start_time', 'end_time', 'description')
+        fields = (
+            'subject',
+            'class_name',
+            'schedule_start_date',
+            'schedule_end_date',
+            'daily_start_time',
+            'daily_end_time',
+            'description',
+        )
         widgets = {
             'subject': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -258,20 +285,40 @@ class CreateClassSessionForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Class Name (e.g., 10-A)'
             }),
-            'start_time': forms.DateTimeInput(attrs={
-                'class': 'form-control',
-                'type': 'datetime-local'
-            }),
-            'end_time': forms.DateTimeInput(attrs={
-                'class': 'form-control',
-                'type': 'datetime-local'
-            }),
             'description': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 3,
                 'placeholder': 'Optional: Class description or topics'
             }),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('schedule_start_date')
+        end_date = cleaned_data.get('schedule_end_date')
+        start_time = cleaned_data.get('daily_start_time')
+        end_time = cleaned_data.get('daily_end_time')
+
+        if not all([start_date, end_date, start_time, end_time]):
+            raise ValidationError('Start date, end date, daily start time, and daily end time are required.')
+
+        if start_date and end_date and end_date < start_date:
+            raise ValidationError('Schedule end date must be on or after start date.')
+
+        if start_time and end_time:
+            if end_time <= start_time:
+                raise ValidationError('Daily end time must be after daily start time.')
+
+            duration_minutes = int(
+                (datetime.combine(start_date, end_time) - datetime.combine(start_date, start_time)).total_seconds() / 60
+            )
+
+            if duration_minutes < 15 or duration_minutes > 480:
+                raise ValidationError('Daily class duration must be between 15 and 480 minutes.')
+
+            cleaned_data['duration_minutes'] = duration_minutes
+
+        return cleaned_data
 
 
 class MarkAttendanceForm(forms.ModelForm):

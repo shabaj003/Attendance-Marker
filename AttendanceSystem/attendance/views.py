@@ -27,6 +27,18 @@ from .face_recognition_utils import face_manager
 logger = logging.getLogger(__name__)
 
 
+def _ensure_verified_teacher(request, teacher):
+    """Block class-management actions for unverified teachers."""
+    if teacher.is_verified:
+        return None
+
+    messages.error(
+        request,
+        'Your account is pending admin verification. You cannot create or manage classes yet.'
+    )
+    return redirect('teacher_dashboard')
+
+
 # ============================================================================
 # AUTHENTICATION VIEWS
 # ============================================================================
@@ -265,6 +277,7 @@ def mark_attendance(request):
             
             try:
                 class_session = ClassSession.objects.get(class_key=class_key)
+                today = timezone.localdate()
                 
                 # Check if class is valid for attendance
                 if not class_session.is_valid_for_attendance():
@@ -274,7 +287,8 @@ def mark_attendance(request):
                 # Check for duplicate attendance
                 existing = AttendanceRecord.objects.filter(
                     student=student,
-                    class_session=class_session
+                    class_session=class_session,
+                    session_date=today
                 ).first()
                 
                 if existing:
@@ -299,6 +313,7 @@ def mark_attendance(request):
                 attendance = AttendanceRecord.objects.create(
                     student=student,
                     class_session=class_session,
+                    session_date=today,
                     is_present=True,
                     face_verified=face_verified,
                     verification_distance=confidence_score,
@@ -413,14 +428,36 @@ def teacher_dashboard(request):
     
     # Get statistics
     total_sessions = ClassSession.objects.filter(teacher=teacher).count()
-    active_sessions = ClassSession.objects.filter(teacher=teacher, is_active=True).count()
+    now_local = timezone.localtime()
+    today = now_local.date()
+    current_time = now_local.time()
     
     # Get today's sessions
-    today = timezone.now().date()
     today_sessions = ClassSession.objects.filter(
-        teacher=teacher,
-        start_time__date=today
-    ).order_by('start_time')
+        teacher=teacher
+    ).filter(
+        Q(schedule_start_date__lte=today, schedule_end_date__gte=today) |
+        Q(schedule_start_date__isnull=True, start_time__date=today)
+    ).order_by('daily_start_time', 'start_time')
+
+    active_sessions = 0
+    for session in today_sessions:
+        if session.is_recurring_schedule():
+            if session.is_active and session.active_date == today and current_time > session.daily_end_time:
+                session.is_active = False
+                session.active_date = None
+                session.save()
+
+            session.is_active_today = (
+                session.is_active and
+                session.active_date == today and
+                session.daily_start_time <= current_time <= session.daily_end_time
+            )
+        else:
+            session.is_active_today = session.is_active and session.start_time <= timezone.now() <= session.end_time
+
+        if session.is_active_today:
+            active_sessions += 1
     
     # Get recent attendance
     recent_attendance = AttendanceRecord.objects.filter(
@@ -431,6 +468,7 @@ def teacher_dashboard(request):
         'teacher': teacher,
         'total_sessions': total_sessions,
         'active_sessions': active_sessions,
+        'today': today,
         'today_sessions': today_sessions,
         'recent_attendance': recent_attendance,
         'page_title': 'Teacher Dashboard'
@@ -445,20 +483,34 @@ def create_class(request):
         return redirect('index')
     
     teacher = get_object_or_404(Teacher, user=request.user)
+    verification_redirect = _ensure_verified_teacher(request, teacher)
+    if verification_redirect:
+        return verification_redirect
     
     if request.method == 'POST':
         form = CreateClassSessionForm(request.POST)
         if form.is_valid():
             class_session = form.save(commit=False)
+            schedule_start_date = form.cleaned_data['schedule_start_date']
+            daily_start_time = form.cleaned_data['daily_start_time']
+            daily_end_time = form.cleaned_data['daily_end_time']
+
+            start_datetime = timezone.make_aware(
+                datetime.combine(schedule_start_date, daily_start_time),
+                timezone.get_current_timezone()
+            )
+            end_datetime = timezone.make_aware(
+                datetime.combine(schedule_start_date, daily_end_time),
+                timezone.get_current_timezone()
+            )
+
             class_session.teacher = teacher
             class_session.class_key = ClassSession.generate_class_key()
             class_session.duration_minutes = form.cleaned_data['duration_minutes']
-            
-            # Set end_time if not provided
-            if not class_session.end_time:
-                class_session.end_time = class_session.start_time + timedelta(
-                    minutes=class_session.duration_minutes
-                )
+            class_session.start_time = start_datetime
+            class_session.end_time = end_datetime
+            class_session.is_active = False
+            class_session.active_date = None
             
             class_session.save()
             
@@ -467,11 +519,20 @@ def create_class(request):
                 teacher=teacher,
                 class_session=class_session,
                 action='class_created',
-                description=f'Created class session: {class_session.subject}',
+                description=(
+                    f'Created recurring class schedule: {class_session.subject} '
+                    f'({class_session.schedule_start_date} to {class_session.schedule_end_date})'
+                ),
                 ip_address=get_client_ip(request)
             )
             
-            messages.success(request, f'Class created! Key: {class_session.class_key}')
+            messages.success(
+                request,
+                (
+                    'Class schedule created successfully. '
+                    'A new class key will be generated each day when you click Start Class.'
+                )
+            )
             return redirect('class_detail', class_id=class_session.id)
     else:
         form = CreateClassSessionForm()
@@ -491,17 +552,40 @@ def class_detail(request, class_id):
     
     teacher = get_object_or_404(Teacher, user=request.user)
     class_session = get_object_or_404(ClassSession, id=class_id, teacher=teacher)
+    now_local = timezone.localtime()
+    today = now_local.date()
+    current_time = now_local.time()
+    is_recurring = class_session.is_recurring_schedule()
+
+    # Expire stale active state from previous days for recurring schedules
+    if is_recurring and class_session.is_active:
+        if class_session.active_date != today or current_time > class_session.daily_end_time:
+            class_session.is_active = False
+            class_session.active_date = None
+            class_session.save()
     
     # Get attendance records
-    attendance_records = AttendanceRecord.objects.filter(
-        class_session=class_session
-    ).select_related('student').order_by('-marked_at')
-    
+    attendance_records = AttendanceRecord.objects.filter(class_session=class_session)
+    if is_recurring:
+        attendance_records = attendance_records.filter(session_date=today)
+    attendance_records = attendance_records.select_related('student').order_by('-marked_at')
+
     present_count = attendance_records.filter(is_present=True).count()
     absent_count = attendance_records.filter(is_present=False).count()
+    is_active_today = class_session.is_active
+    if is_recurring:
+        is_active_today = (
+            class_session.is_active and
+            class_session.active_date == today and
+            class_session.daily_start_time <= current_time <= class_session.daily_end_time
+        )
     
     context = {
         'class_session': class_session,
+        'teacher': teacher,
+        'today': today,
+        'is_recurring': is_recurring,
+        'is_active_today': is_active_today,
         'attendance_records': attendance_records,
         'present_count': present_count,
         'absent_count': absent_count,
@@ -511,63 +595,95 @@ def class_detail(request, class_id):
 
 
 @login_required(login_url='login')
+@require_POST
 def start_class(request, class_id):
     """Start a class session"""
     if request.user.user_type != 'teacher':
         return redirect('index')
     
     teacher = get_object_or_404(Teacher, user=request.user)
+    verification_redirect = _ensure_verified_teacher(request, teacher)
+    if verification_redirect:
+        return verification_redirect
+
     class_session = get_object_or_404(ClassSession, id=class_id, teacher=teacher)
+    now_local = timezone.localtime()
+    today = now_local.date()
+
+    if class_session.is_recurring_schedule():
+        if not (class_session.schedule_start_date <= today <= class_session.schedule_end_date):
+            messages.error(
+                request,
+                'This class is outside its configured date range and cannot be started today.'
+            )
+            return redirect('class_detail', class_id=class_id)
+
+        current_time = now_local.time()
+        if not (class_session.daily_start_time <= current_time <= class_session.daily_end_time):
+            messages.error(
+                request,
+                (
+                    f'This class can only be started during its preferred time window: '
+                    f'{class_session.daily_start_time.strftime("%H:%M")} - '
+                    f'{class_session.daily_end_time.strftime("%H:%M")}.'
+                )
+            )
+            return redirect('class_detail', class_id=class_id)
+
+        if class_session.is_active and class_session.active_date == today:
+            messages.info(request, f'Class is already active. Current key: {class_session.class_key}')
+            return redirect('class_detail', class_id=class_id)
+
+        class_session.active_date = today
+
+    class_session.class_key = ClassSession.generate_class_key()
+    class_session.key_generated_at = timezone.now()
+    class_session.is_active = True
+    class_session.save()
     
-    if request.method == 'POST':
-        class_session.is_active = True
-        class_session.save()
-        
-        ClassLog.objects.create(
-            teacher=teacher,
-            class_session=class_session,
-            action='class_started',
-            ip_address=get_client_ip(request)
-        )
-        
-        messages.success(request, f'Class started! Key: {class_session.class_key}')
-        return redirect('class_detail', class_id=class_id)
+    ClassLog.objects.create(
+        teacher=teacher,
+        class_session=class_session,
+        action='class_started',
+        ip_address=get_client_ip(request)
+    )
     
-    return render(request, 'attendance/confirm_action.html', {
-        'title': 'Start Class',
-        'message': f'Are you sure you want to start "{class_session.subject}"?',
-        'confirm_url': request.path
-    })
+    messages.success(request, f'Class started! Key: {class_session.class_key}')
+    return redirect('class_detail', class_id=class_id)
 
 
 @login_required(login_url='login')
+@require_POST
 def end_class(request, class_id):
     """End a class session"""
     if request.user.user_type != 'teacher':
         return redirect('index')
     
     teacher = get_object_or_404(Teacher, user=request.user)
+    verification_redirect = _ensure_verified_teacher(request, teacher)
+    if verification_redirect:
+        return verification_redirect
+
     class_session = get_object_or_404(ClassSession, id=class_id, teacher=teacher)
+    today = timezone.localdate()
+
+    if class_session.is_recurring_schedule() and class_session.active_date != today:
+        messages.warning(request, 'There is no active class to end for today.')
+        return redirect('class_detail', class_id=class_id)
+
+    class_session.is_active = False
+    class_session.active_date = None
+    class_session.save()
     
-    if request.method == 'POST':
-        class_session.is_active = False
-        class_session.save()
-        
-        ClassLog.objects.create(
-            teacher=teacher,
-            class_session=class_session,
-            action='class_ended',
-            ip_address=get_client_ip(request)
-        )
-        
-        messages.success(request, 'Class ended. Attendance marked.')
-        return redirect('teacher_dashboard')
+    ClassLog.objects.create(
+        teacher=teacher,
+        class_session=class_session,
+        action='class_ended',
+        ip_address=get_client_ip(request)
+    )
     
-    return render(request, 'attendance/confirm_action.html', {
-        'title': 'End Class',
-        'message': f'Are you sure you want to end "{class_session.subject}"?',
-        'confirm_url': request.path
-    })
+    messages.success(request, 'Class ended. Attendance marked.')
+    return redirect('teacher_dashboard')
 
 
 @login_required(login_url='login')
@@ -646,9 +762,15 @@ def api_mark_attendance(request):
         # Check if class is active
         if not class_session.is_valid_for_attendance():
             return JsonResponse({'success': False, 'message': 'Class is not active for attendance'}, status=400)
+
+        today = timezone.localdate()
         
         # Check for duplicate
-        if AttendanceRecord.objects.filter(student=student, class_session=class_session).exists():
+        if AttendanceRecord.objects.filter(
+            student=student,
+            class_session=class_session,
+            session_date=today
+        ).exists():
             return JsonResponse({'success': False, 'message': 'Attendance already marked for this class'}, status=400)
         
         face_verified = False
@@ -685,6 +807,7 @@ def api_mark_attendance(request):
         AttendanceRecord.objects.create(
             student=student,
             class_session=class_session,
+            session_date=today,
             is_present=True,
             face_verified=face_verified,
             verification_distance=confidence_score,

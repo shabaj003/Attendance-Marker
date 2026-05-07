@@ -92,11 +92,27 @@ class Teacher(models.Model):
     def get_active_classes(self):
         """Get all active class sessions for this teacher"""
         now = timezone.now()
+        now_local = timezone.localtime(now)
+        today = now_local.date()
+        current_time = now_local.time()
+
         return ClassSession.objects.filter(
             teacher=self,
-            start_time__lte=now,
-            end_time__gte=now,
             is_active=True
+        ).filter(
+            models.Q(
+                schedule_start_date__isnull=False,
+                schedule_start_date__lte=today,
+                schedule_end_date__gte=today,
+                active_date=today,
+                daily_start_time__lte=current_time,
+                daily_end_time__gte=current_time
+            ) |
+            models.Q(
+                schedule_start_date__isnull=True,
+                start_time__lte=now,
+                end_time__gte=now
+            )
         )
 
 
@@ -106,6 +122,12 @@ class ClassSession(models.Model):
     subject = models.CharField(max_length=100)
     class_name = models.CharField(max_length=50)  # e.g., "10-A", "12-B"
     class_key = models.CharField(max_length=10, unique=True)  # Unique code for attendance
+    schedule_start_date = models.DateField(null=True, blank=True)
+    schedule_end_date = models.DateField(null=True, blank=True)
+    daily_start_time = models.TimeField(null=True, blank=True)
+    daily_end_time = models.TimeField(null=True, blank=True)
+    active_date = models.DateField(null=True, blank=True)  # Active day for recurring classes
+    key_generated_at = models.DateTimeField(null=True, blank=True)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     duration_minutes = models.IntegerField()
@@ -130,10 +152,34 @@ class ClassSession(models.Model):
     @staticmethod
     def generate_class_key():
         """Generate a unique 6-character class key"""
-        return secrets.token_hex(3).upper()[:6]
+        while True:
+            key = secrets.token_hex(3).upper()[:6]
+            if not ClassSession.objects.filter(class_key=key).exists():
+                return key
+
+    def is_recurring_schedule(self):
+        """Check if this class is configured as a recurring schedule."""
+        return (
+            self.schedule_start_date is not None and
+            self.schedule_end_date is not None and
+            self.daily_start_time is not None and
+            self.daily_end_time is not None
+        )
     
     def is_valid_for_attendance(self):
         """Check if class is currently valid for marking attendance"""
+        if self.is_recurring_schedule():
+            now_local = timezone.localtime()
+            today = now_local.date()
+            current_time = now_local.time()
+
+            return (
+                self.is_active and
+                self.active_date == today and
+                self.schedule_start_date <= today <= self.schedule_end_date and
+                self.daily_start_time <= current_time <= self.daily_end_time
+            )
+
         now = timezone.now()
         return self.is_active and self.start_time <= now <= self.end_time
     
@@ -154,6 +200,7 @@ class AttendanceRecord(models.Model):
     """Attendance record model"""
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='attendance_records')
     class_session = models.ForeignKey(ClassSession, on_delete=models.CASCADE, related_name='attendance_records')
+    session_date = models.DateField(default=timezone.localdate)
     is_present = models.BooleanField(default=False)
     marked_at = models.DateTimeField(auto_now_add=True)
     face_verified = models.BooleanField(default=False)
@@ -166,10 +213,11 @@ class AttendanceRecord(models.Model):
     class Meta:
         verbose_name = 'Attendance Record'
         verbose_name_plural = 'Attendance Records'
-        unique_together = ('student', 'class_session')
+        unique_together = ('student', 'class_session', 'session_date')
         ordering = ['-marked_at']
         indexes = [
             models.Index(fields=['student', 'class_session']),
+            models.Index(fields=['class_session', 'session_date']),
             models.Index(fields=['marked_at']),
         ]
     

@@ -10,14 +10,26 @@
             <p class="text-muted">Class: {{ class_session.class_name }}</p>
         </div>
         <div class="col-auto">
-            {% if class_session.is_active %}
-                <a href="{% url 'end_class' class_session.id %}" class="btn btn-danger">
-                    <i class="fas fa-stop"></i> End Class
-                </a>
+            {% if teacher.is_verified %}
+                {% if is_active_today %}
+                    <form method="post" action="{% url 'end_class' class_session.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-stop"></i> End Class
+                        </button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{% url 'start_class' class_session.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-play"></i> Start Class
+                        </button>
+                    </form>
+                {% endif %}
             {% else %}
-                <a href="{% url 'start_class' class_session.id %}" class="btn btn-success">
-                    <i class="fas fa-play"></i> Start Class
-                </a>
+                <button type="button" class="btn btn-secondary" disabled>
+                    <i class="fas fa-lock"></i> Admin Approval Required
+                </button>
             {% endif %}
         </div>
     </div>
@@ -32,11 +44,16 @@
                 <div class="card-body">
                     <p><strong>Subject:</strong> {{ class_session.subject }}</p>
                     <p><strong>Class:</strong> {{ class_session.class_name }}</p>
-                    <p><strong>Start Time:</strong> {{ class_session.start_time|date:"d M, Y H:i" }}</p>
-                    <p><strong>End Time:</strong> {{ class_session.end_time|date:"d M, Y H:i" }}</p>
+                    {% if is_recurring %}
+                        <p><strong>Schedule:</strong> {{ class_session.schedule_start_date|date:"d M, Y" }} to {{ class_session.schedule_end_date|date:"d M, Y" }}</p>
+                        <p><strong>Daily Time:</strong> {{ class_session.daily_start_time|time:"H:i" }} - {{ class_session.daily_end_time|time:"H:i" }}</p>
+                    {% else %}
+                        <p><strong>Start Time:</strong> {{ class_session.start_time|date:"d M, Y H:i" }}</p>
+                        <p><strong>End Time:</strong> {{ class_session.end_time|date:"d M, Y H:i" }}</p>
+                    {% endif %}
                     <p><strong>Duration:</strong> {{ class_session.duration_minutes }} minutes</p>
                     <p><strong>Status:</strong>
-                        {% if class_session.is_active %}
+                        {% if is_active_today %}
                             <span class="badge bg-success">Active</span>
                         {% else %}
                             <span class="badge bg-secondary">Inactive</span>
@@ -52,16 +69,22 @@
                     <h5><i class="fas fa-key"></i> Access Information</h5>
                 </div>
                 <div class="card-body">
-                    <h6>Class Key:</h6>
-                    <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                        <code style="font-size: 1.5rem; font-weight: bold;">{{ class_session.class_key }}</code>
-                        <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyToClipboard('{{ class_session.class_key }}')">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
-                    </div>
-                    <p class="small text-muted">
-                        Share this key with students to mark attendance
-                    </p>
+                    {% if is_active_today %}
+                        <h6>Today's Class Key:</h6>
+                        <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <code style="font-size: 1.5rem; font-weight: bold;">{{ class_session.class_key }}</code>
+                            <button class="btn btn-sm btn-outline-primary ms-2" onclick="copyToClipboard('{{ class_session.class_key }}')">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <p class="small text-muted">
+                            Share this key with students. A new key is generated each time today's class is started.
+                        </p>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> Start class to generate and display today's class key.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -133,7 +156,11 @@
                     {% empty %}
                         <tr>
                             <td colspan="5" class="text-center text-muted">
-                                No attendance records yet
+                                {% if is_recurring %}
+                                    No attendance records for today yet
+                                {% else %}
+                                    No attendance records yet
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}

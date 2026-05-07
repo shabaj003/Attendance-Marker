@@ -38,9 +38,15 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{% url 'create_class' %}" class="btn btn-primary" {% if not teacher.is_verified %}disabled{% endif %}>
-                            <i class="fas fa-plus-square"></i> Create Class
-                        </a>
+                        {% if teacher.is_verified %}
+                            <a href="{% url 'create_class' %}" class="btn btn-primary">
+                                <i class="fas fa-plus-square"></i> Create Class
+                            </a>
+                        {% else %}
+                            <button type="button" class="btn btn-primary" disabled>
+                                <i class="fas fa-lock"></i> Create Class (Admin Approval Required)
+                            </button>
+                        {% endif %}
                         <a href="{% url 'teacher_attendance_report' %}" class="btn btn-secondary">
                             <i class="fas fa-chart-line"></i> Attendance Report
                         </a>
@@ -120,10 +126,22 @@
                                         <tr>
                                             <td>{{ session.subject }}</td>
                                             <td>{{ session.class_name }}</td>
-                                            <td>{{ session.start_time|time:"H:i" }}</td>
-                                            <td>{{ session.end_time|time:"H:i" }}</td>
                                             <td>
-                                                {% if session.is_active %}
+                                                {% if session.daily_start_time %}
+                                                    {{ session.daily_start_time|time:"H:i" }}
+                                                {% else %}
+                                                    {{ session.start_time|time:"H:i" }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if session.daily_end_time %}
+                                                    {{ session.daily_end_time|time:"H:i" }}
+                                                {% else %}
+                                                    {{ session.end_time|time:"H:i" }}
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if session.is_active_today %}
                                                     <span class="badge bg-success">Active</span>
                                                 {% else %}
                                                     <span class="badge bg-secondary">Inactive</span>
