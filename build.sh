@@ -1,12 +1,10 @@
-# #!/usr/bin/env bash
-# pip install -r requirements.txt
-# python manage.py collectstatic --noinput
-# python manage.py migrate
-
 #!/usr/bin/env bash
+set -euo pipefail
 
-pip install --upgrade pip
-pip install -r requirements.txt
+PROJECT_DIR="AttendanceSystem"
 
-python manage.py collectstatic --noinput
-python manage.py migrate
+python -m pip install --upgrade pip
+python -m pip install -r "${PROJECT_DIR}/requirements.txt"
+
+python "${PROJECT_DIR}/manage.py" collectstatic --noinput
+python "${PROJECT_DIR}/manage.py" migrate --noinput
